@@ -1,66 +1,60 @@
 import express from 'express';
 import cors from 'cors';
+import dotenv from 'dotenv';
 import { google } from 'googleapis';
 
-// Create your Express app
+dotenv.config();
+
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// OAuth2 client setup - fill these from your Google Cloud credentials and tokens
-const CLIENT_ID = process.env.CLIENT_ID;
-const CLIENT_SECRET = process.env.CLIENT_SECRET;
-const REDIRECT_URI = process.env.REDIRECT_URI;
-const REFRESH_TOKEN = process.env.REFRESH_TOKEN;
+const {
+  CLIENT_ID,
+  CLIENT_SECRET,
+  REDIRECT_URI,
+  REFRESH_TOKEN
+} = process.env;
 
-// Initialize OAuth2 client
 const oauth2Client = new google.auth.OAuth2(
   CLIENT_ID,
   CLIENT_SECRET,
   REDIRECT_URI
 );
-
-// Set the refresh token on the client so it can get access tokens automatically
 oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
 
-// Initialize the Business Profile API client
-const businessProfile = google.mybusinessbusinessinformation('v1');
+// Initialize the My Business API client (version v4)
+const mybusiness = google.mybusiness({ version: 'v4', auth: oauth2Client });
 
 app.get('/reviews', async (req, res) => {
   try {
-    // List the accounts associated with your business profile
-    const accountsResponse = await businessProfile.accounts.list({
-      auth: oauth2Client,
-    });
-    
+    // 1. List accounts
+    const accountsResponse = await mybusiness.accounts.list();
     const accounts = accountsResponse.data.accounts;
     if (!accounts || accounts.length === 0) {
-      return res.status(404).json({ error: 'No Google Business accounts found' });
+      return res.status(404).json({ error: 'No accounts found' });
     }
-    
-    const accountName = accounts[0].name; // e.g., 'accounts/1234567890'
 
-    // List locations under that account
-    const locationsResponse = await businessProfile.accounts.locations.list({
-      auth: oauth2Client,
-      parent: accountName,
+    const accountName = accounts[0].name; // format: accounts/{accountId}
+
+    // 2. List locations under the account
+    const locationsResponse = await mybusiness.accounts.locations.list({
+      parent: accountName
     });
-
     const locations = locationsResponse.data.locations;
     if (!locations || locations.length === 0) {
-      return res.status(404).json({ error: 'No locations found for this account' });
+      return res.status(404).json({ error: 'No locations found' });
     }
 
-    const locationName = locations[0].name; // e.g., 'accounts/1234567890/locations/987654321'
+    const locationName = locations[0].name; // format: accounts/{accountId}/locations/{locationId}
 
-    // Fetch reviews for that location
-    const reviewsResponse = await businessProfile.accounts.locations.reviews.list({
-      auth: oauth2Client,
-      parent: locationName,
+    // 3. List reviews for the location
+    const reviewsResponse = await mybusiness.accounts.locations.reviews.list({
+      parent: locationName
     });
 
     const reviews = reviewsResponse.data.reviews || [];
-    
+
     res.json({ reviews });
   } catch (error) {
     console.error('Error fetching reviews:', error);
@@ -68,8 +62,7 @@ app.get('/reviews', async (req, res) => {
   }
 });
 
-// Start server
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
