@@ -20,9 +20,9 @@ oauth2Client.setCredentials({
   refresh_token: process.env.REFRESH_TOKEN
 });
 
-// Root route for friendly homepage
+// Root route
 app.get('/', (req, res) => {
-  res.send('🚀 Snack Kingdom API is running!');
+  res.send('Snack Kingdom API is running.');
 });
 
 // Endpoint to list Google Business Profile accounts
@@ -41,12 +41,12 @@ app.get('/accounts', async (req, res) => {
 
     res.json(response.data);
   } catch (error) {
-    console.error('❌ Error fetching accounts:', error.response?.data || error.message);
+    console.error('Error fetching accounts:', error.response?.data || error.message);
     res.status(500).send('Error fetching business accounts');
   }
 });
 
 // Start server
 app.listen(port, () => {
-  console.log(`✅ Snack Kingdom API running at http://localhost:${port}`);
+  console.log(`Snack Kingdom API running at http://localhost:${port}`);
 });
