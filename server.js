@@ -13,7 +13,7 @@ const oauth2Client = new google.auth.OAuth2(
   process.env.REDIRECT_URI
 );
 
-const myBusiness = google.mybusiness({ version: 'v4', auth: oauth2Client });
+const myBusiness = google.businessprofile({ version: 'v1', auth: oauth2Client });
 
 app.get('/', async (req, res) => {
   const authUrl = oauth2Client.generateAuthUrl({
