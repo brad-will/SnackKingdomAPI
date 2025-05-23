@@ -1,9 +1,8 @@
 {
   "name": "snack-kingdom-api",
   "version": "1.0.0",
-  "description": "Snack Kingdom Google Business API Integration",
-  "main": "server.js",
   "type": "module",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
@@ -11,6 +10,6 @@
     "axios": "^1.6.8",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "googleapis": "^127.0.0"
+    "googleapis": "^133.0.0"
   }
 }
