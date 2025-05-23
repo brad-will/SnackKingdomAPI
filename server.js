@@ -8,39 +8,45 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 10000;
 
+// Initialize OAuth2 client
 const oauth2Client = new google.auth.OAuth2(
   process.env.CLIENT_ID,
   process.env.CLIENT_SECRET,
   process.env.REDIRECT_URI
 );
 
-// Set the refresh token
+// Set refresh token credentials
 oauth2Client.setCredentials({
   refresh_token: process.env.REFRESH_TOKEN
 });
 
-// Sample endpoint to list business accounts
+// Root route for friendly homepage
+app.get('/', (req, res) => {
+  res.send('🚀 Snack Kingdom API is running!');
+});
+
+// Endpoint to list Google Business Profile accounts
 app.get('/accounts', async (req, res) => {
   try {
-    const accessTokenResponse = await oauth2Client.getAccessToken();
-    const accessToken = accessTokenResponse.token;
+    const { token } = await oauth2Client.getAccessToken();
 
     const response = await axios.get(
       'https://mybusinessbusinessinformation.googleapis.com/v1/accounts',
       {
         headers: {
-          Authorization: `Bearer ${accessToken}`
+          Authorization: `Bearer ${token}`
         }
       }
     );
 
     res.json(response.data);
   } catch (error) {
-    console.error('Error fetching accounts:', error.response?.data || error.message);
+    console.error('❌ Error fetching accounts:', error.response?.data || error.message);
     res.status(500).send('Error fetching business accounts');
   }
 });
 
+// Start server
 app.listen(port, () => {
-  console.log(`Snack Kingdom API running on port ${port}`);
+  console.log(`✅ Snack Kingdom API running at http://localhost:${port}`);
 });
