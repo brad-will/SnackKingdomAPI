@@ -24,7 +24,7 @@ const oauth2Client = new google.auth.OAuth2(
 oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
 
 // Initialize the Business Profile API client
-const businessProfile = google.businessprofile('v1');
+const businessProfile = google.mybusiness('v4');
 
 app.get('/reviews', async (req, res) => {
   try {
