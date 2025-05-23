@@ -1,68 +1,46 @@
 import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
 import { google } from 'googleapis';
+import axios from 'axios';
+import dotenv from 'dotenv';
 
 dotenv.config();
 
 const app = express();
-app.use(cors());
-app.use(express.json());
-
-const {
-  CLIENT_ID,
-  CLIENT_SECRET,
-  REDIRECT_URI,
-  REFRESH_TOKEN
-} = process.env;
+const port = process.env.PORT || 10000;
 
 const oauth2Client = new google.auth.OAuth2(
-  CLIENT_ID,
-  CLIENT_SECRET,
-  REDIRECT_URI
+  process.env.CLIENT_ID,
+  process.env.CLIENT_SECRET,
+  process.env.REDIRECT_URI
 );
-oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
 
-// Initialize the My Business API client (version v4)
-const mybusiness = google.mybusiness({ version: 'v4', auth: oauth2Client });
+// Set the refresh token
+oauth2Client.setCredentials({
+  refresh_token: process.env.REFRESH_TOKEN
+});
 
-app.get('/reviews', async (req, res) => {
+// Sample endpoint to list business accounts
+app.get('/accounts', async (req, res) => {
   try {
-    // 1. List accounts
-    const accountsResponse = await mybusiness.accounts.list();
-    const accounts = accountsResponse.data.accounts;
-    if (!accounts || accounts.length === 0) {
-      return res.status(404).json({ error: 'No accounts found' });
-    }
+    const accessTokenResponse = await oauth2Client.getAccessToken();
+    const accessToken = accessTokenResponse.token;
 
-    const accountName = accounts[0].name; // format: accounts/{accountId}
+    const response = await axios.get(
+      'https://mybusinessbusinessinformation.googleapis.com/v1/accounts',
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      }
+    );
 
-    // 2. List locations under the account
-    const locationsResponse = await mybusiness.accounts.locations.list({
-      parent: accountName
-    });
-    const locations = locationsResponse.data.locations;
-    if (!locations || locations.length === 0) {
-      return res.status(404).json({ error: 'No locations found' });
-    }
-
-    const locationName = locations[0].name; // format: accounts/{accountId}/locations/{locationId}
-
-    // 3. List reviews for the location
-    const reviewsResponse = await mybusiness.accounts.locations.reviews.list({
-      parent: locationName
-    });
-
-    const reviews = reviewsResponse.data.reviews || [];
-
-    res.json({ reviews });
+    res.json(response.data);
   } catch (error) {
-    console.error('Error fetching reviews:', error);
-    res.status(500).json({ error: 'Failed to fetch reviews' });
+    console.error('Error fetching accounts:', error.response?.data || error.message);
+    res.status(500).send('Error fetching business accounts');
   }
 });
 
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(port, () => {
+  console.log(`Snack Kingdom API running on port ${port}`);
 });
