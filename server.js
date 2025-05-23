@@ -1,65 +1,74 @@
 import express from 'express';
-import { google } from 'googleapis';
-import dotenv from 'dotenv';
 import cors from 'cors';
+import { google } from 'googleapis';
 
-dotenv.config();
+// Create your Express app
 const app = express();
 app.use(cors());
+app.use(express.json());
 
+// OAuth2 client setup - fill these from your Google Cloud credentials and tokens
+const CLIENT_ID = process.env.CLIENT_ID;
+const CLIENT_SECRET = process.env.CLIENT_SECRET;
+const REDIRECT_URI = process.env.REDIRECT_URI;
+const REFRESH_TOKEN = process.env.REFRESH_TOKEN;
+
+// Initialize OAuth2 client
 const oauth2Client = new google.auth.OAuth2(
-  process.env.CLIENT_ID,
-  process.env.CLIENT_SECRET,
-  process.env.REDIRECT_URI
+  CLIENT_ID,
+  CLIENT_SECRET,
+  REDIRECT_URI
 );
 
-const SCOPES = ['https://www.googleapis.com/auth/business.manage'];
+// Set the refresh token on the client so it can get access tokens automatically
+oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
 
-app.get('/', (req, res) => {
-  const url = oauth2Client.generateAuthUrl({
-    access_type: 'offline',
-    scope: SCOPES,
-  });
-  res.redirect(url);
-});
-
-app.get('/oauth2callback', async (req, res) => {
-  try {
-    const { tokens } = await oauth2Client.getToken(req.query.code);
-    oauth2Client.setCredentials(tokens);
-    res.redirect('/reviews');
-  } catch (err) {
-    console.error('OAuth Error:', err);
-    res.status(500).send('Authentication failed.');
-  }
-});
+// Initialize the Business Profile API client
+const businessProfile = google.businessprofile('v1');
 
 app.get('/reviews', async (req, res) => {
   try {
-    import { google } from 'googleapis';
-
-const businessProfile = google.businessprofile('v1');
-
-
-    const accountsRes = await mybusiness.accounts.list();
-    const account = accountsRes.data.accounts[0];
-
-    const locationsRes = await mybusiness.accounts.locations.list({
-      parent: `accounts/${account.name.split('/')[1]}`,
+    // List the accounts associated with your business profile
+    const accountsResponse = await businessProfile.accounts.list({
+      auth: oauth2Client,
     });
-    const location = locationsRes.data.locations[0];
+    
+    const accounts = accountsResponse.data.accounts;
+    if (!accounts || accounts.length === 0) {
+      return res.status(404).json({ error: 'No Google Business accounts found' });
+    }
+    
+    const accountName = accounts[0].name; // e.g., 'accounts/1234567890'
 
-    const reviewsRes = await mybusiness.accounts.locations.reviews.list({
-      parent: location.name,
+    // List locations under that account
+    const locationsResponse = await businessProfile.accounts.locations.list({
+      auth: oauth2Client,
+      parent: accountName,
     });
 
-    res.json(reviewsRes.data.reviews);
-  } catch (err) {
-    console.error('Error fetching reviews:', err);
-    res.status(500).send('An error occurred while fetching reviews.');
+    const locations = locationsResponse.data.locations;
+    if (!locations || locations.length === 0) {
+      return res.status(404).json({ error: 'No locations found for this account' });
+    }
+
+    const locationName = locations[0].name; // e.g., 'accounts/1234567890/locations/987654321'
+
+    // Fetch reviews for that location
+    const reviewsResponse = await businessProfile.accounts.locations.reviews.list({
+      auth: oauth2Client,
+      parent: locationName,
+    });
+
+    const reviews = reviewsResponse.data.reviews || [];
+    
+    res.json({ reviews });
+  } catch (error) {
+    console.error('Error fetching reviews:', error);
+    res.status(500).json({ error: 'Failed to fetch reviews' });
   }
 });
 
+// Start server
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
