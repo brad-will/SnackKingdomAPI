@@ -8,29 +8,30 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 10000;
 
-// Initialize OAuth2 client
+// Setup OAuth2
 const oauth2Client = new google.auth.OAuth2(
   process.env.CLIENT_ID,
   process.env.CLIENT_SECRET,
   process.env.REDIRECT_URI
 );
 
-// Set refresh token credentials
 oauth2Client.setCredentials({
   refresh_token: process.env.REFRESH_TOKEN
 });
 
-// Root route
+// Root: basic check
 app.get('/', (req, res) => {
   res.send('Snack Kingdom API is running.');
 });
 
-// Endpoint to list Google Business Profile accounts
-app.get('/accounts', async (req, res) => {
+// GET /reviews
+app.get('/reviews', async (req, res) => {
   try {
+    // Get token
     const { token } = await oauth2Client.getAccessToken();
 
-    const response = await axios.get(
+    // Get account ID
+    const accountsResponse = await axios.get(
       'https://mybusinessbusinessinformation.googleapis.com/v1/accounts',
       {
         headers: {
@@ -39,14 +40,39 @@ app.get('/accounts', async (req, res) => {
       }
     );
 
-    res.json(response.data);
+    const account = accountsResponse.data.accounts?.[0];
+    if (!account) return res.status(404).send('No account found');
+
+    // Get locations
+    const locationsResponse = await axios.get(
+      `https://mybusinessbusinessinformation.googleapis.com/v1/${account.name}/locations`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+
+    const location = locationsResponse.data.locations?.[0];
+    if (!location) return res.status(404).send('No location found');
+
+    // Get reviews
+    const reviewsResponse = await axios.get(
+      `https://mybusiness.googleapis.com/v4/${location.name}/reviews`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+
+    res.json(reviewsResponse.data);
   } catch (error) {
-    console.error('Error fetching accounts:', error.response?.data || error.message);
-    res.status(500).send('Error fetching business accounts');
+    console.error(error.response?.data || error.message);
+    res.status(500).send('Error fetching reviews');
   }
 });
 
-// Start server
 app.listen(port, () => {
   console.log(`Snack Kingdom API running at http://localhost:${port}`);
 });
