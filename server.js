@@ -36,7 +36,10 @@ app.get('/oauth2callback', async (req, res) => {
 
 app.get('/reviews', async (req, res) => {
   try {
-    const mybusiness = google.mybusiness({ version: 'v4', auth: oauth2Client });
+    import { google } from 'googleapis';
+
+const businessProfile = google.businessprofile('v1');
+
 
     const accountsRes = await mybusiness.accounts.list();
     const account = accountsRes.data.accounts[0];
