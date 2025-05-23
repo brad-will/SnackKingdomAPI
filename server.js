@@ -13,37 +13,50 @@ const oauth2Client = new google.auth.OAuth2(
   process.env.REDIRECT_URI
 );
 
-const myBusiness = google.businessprofile({ version: 'v1', auth: oauth2Client });
+const scopes = ['https://www.googleapis.com/auth/business.manage'];
 
 app.get('/', async (req, res) => {
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
-    scope: ['https://www.googleapis.com/auth/business.manage'],
+    scope: scopes,
   });
   res.redirect(authUrl);
 });
 
 app.get('/oauth2callback', async (req, res) => {
-  const code = req.query.code;
-  const { tokens } = await oauth2Client.getToken(code);
-  oauth2Client.setCredentials(tokens);
+  try {
+    const code = req.query.code;
+    const { tokens } = await oauth2Client.getToken(code);
+    oauth2Client.setCredentials(tokens);
 
-  const accounts = await myBusiness.accounts.list();
-  const account = accounts.data.accounts[0];
+    const businessProfile = google.mybusinessbusinessinformation({
+      version: 'v1',
+      auth: oauth2Client,
+    });
 
-  const locations = await myBusiness.accounts.locations.list({
-    parent: account.name,
-  });
+    const accountsRes = await businessProfile.accounts.list();
+    const account = accountsRes.data.accounts[0];
+    const accountId = account.name; // e.g., 'accounts/123456789'
 
-  const location = locations.data.locations[0];
+    const locationsRes = await businessProfile.accounts.locations.list({
+      parent: accountId,
+    });
 
-  const reviews = await myBusiness.accounts.locations.reviews.list({
-    parent: location.name,
-  });
+    const location = locationsRes.data.locations[0];
+    const locationId = location.name; // e.g., 'accounts/123456789/locations/987654321'
 
-  res.send(reviews.data);
+    const reviewsRes = await businessProfile.accounts.locations.reviews.list({
+      parent: locationId,
+    });
+
+    res.json(reviewsRes.data);
+  } catch (error) {
+    console.error('Error fetching reviews:', error);
+    res.status(500).send('An error occurred while fetching reviews.');
+  }
 });
 
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  console.log(`Server is running on port ${port}`);
+  open(`http://localhost:${port}`);
 });
