@@ -73,6 +73,6 @@ app.get('/reviews', async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Snack Kingdom API running at http://localhost:${port}`);
+app.listen(10000, () => {
+  console.log("Server running on port 10000");
 });
